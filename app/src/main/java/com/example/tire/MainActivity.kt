@@ -289,6 +289,7 @@ fun TireNavHost(
         dialog(Destination.ScreenAddEvent.route){
             TireEditSelectEventScreen(navController = navController)
         }
+
     }
 }
 

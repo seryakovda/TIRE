@@ -135,11 +135,11 @@ class TireEditViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             repository.insertFilesToUpload(fileName,coordinatePhoto,idTireEvents) //сохраняет в локальном репозитории все данные для последующей загрузки на сервер
             imageListLocal.postValue(
-                repository.getFilesToUpload(repository.getSN()) // обновляет данные с локального репозитория для отображения на странице с шиной
+                repository.getFilesToUpload(repository.getSN()) // обновляет данные с для отображения на странице с шиной
             )
            // repository.uploadAllImageFromLocalTableByName(fileName,id_image)
 
-            repository.uploadAllImageFromLocalTable()
+            //repository.uploadAllImageFromLocalTable()
         }
     }
 
@@ -168,6 +168,14 @@ class TireEditViewModel @Inject constructor(
 
             org.apache.commons.io.FileUtils.copyInputStreamToFile(stream,file)
             insertFilesToUpload(fileName,"[]",idTireEvents)
+        }
+        addWorkToWorker()
+    }
+
+    fun addWorkToWorker()
+    {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.addWorkToWorker()
         }
     }
 

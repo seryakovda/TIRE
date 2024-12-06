@@ -4,6 +4,7 @@ import android.content.Context
 
 
 import androidx.room.Room
+import androidx.work.WorkManager
 import com.example.tire.data.DB
 import dagger.Module
 import dagger.Provides
@@ -34,6 +35,9 @@ object Module {
                     }
                 )
             }
+            this.engine {
+                this.requestTimeout = 30000L
+            }
         }
 
     @Singleton
@@ -44,4 +48,9 @@ object Module {
         "todo_list_database"
     ).fallbackToDestructiveMigration().build()
 
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
+    }
 }

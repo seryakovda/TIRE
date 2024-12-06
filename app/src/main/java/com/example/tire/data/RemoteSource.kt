@@ -63,7 +63,14 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
     suspend fun myRequest(requestTxt1:String):HttpResponse{
-        val requestTxt = requestTxt1.replace(" ","%20")
+        var requestTxt = requestTxt1.replace(" ","%20")
+            requestTxt = requestTxt.replace("/","%2F")
+            requestTxt = requestTxt.replace(":","%3A")
+            requestTxt = requestTxt.replace(".","%2E")
+            
+            requestTxt = "$urlRemoteServer?" + requestTxt
+    
+            //Log.i("MyMSG",requestTxt)
         var retStatus = ControlHttpResponse(httpResponse = null, error = true)
         while (retStatus.error) {
             retStatus = statusRequest(requestTxt)
@@ -76,6 +83,8 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
         retStatus.error = try {
             retStatus.httpResponse = client.request(requestTxt)
+
+            //Log.i("MyMSG",retStatus.toString())
             false
         } catch (e: Exception) {
             true
@@ -86,7 +95,7 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
     suspend fun requestSession(): String {
-        val requestSessionUrl = "$urlRemoteServer?" +
+        val requestSessionUrl = 
                 "r0=SYS" +
                 "&r1=registrationKeyAPI" +
                 "&keyAPI=$keyAPI"
@@ -103,7 +112,7 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     suspend fun autorisation(login: String, pass: String, sessionHandle: String): Boolean {
 
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=autorisation" +
                 "&login=$login" +
@@ -125,12 +134,12 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     suspend fun loadBrand(sessionHandle: String,name:String): List<BrandItem>
     {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=loadBrand" +
                 "&name=$name" +
                 "&sessionHandle=$sessionHandle"
-        
+
         val response = myRequest(requestTxt)
 
         return response.body<List<BrandItem>>()
@@ -138,12 +147,12 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     suspend fun loadStandardSize(sessionHandle: String,name:String): List<StandardSizeItem>
     {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=loadStandardSize" +
                 "&name=$name" +
                 "&sessionHandle=$sessionHandle"
-        
+
         val response = myRequest(requestTxt)
 
         return response.body<List<StandardSizeItem>>()
@@ -151,12 +160,12 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     suspend fun loadModel(sessionHandle: String,name:String): List<ModelItem>
     {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=loadModel" +
                 "&name=$name" +
                 "&sessionHandle=$sessionHandle"
-        
+
         val response = myRequest(requestTxt)
 
         return response.body<List<ModelItem>>()
@@ -164,12 +173,12 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     suspend fun loadDivision(sessionHandle: String,name:String):List<DivisionItem>
     {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=loadDivision" +
                 "&name=$name" +
                 "&sessionHandle=$sessionHandle"
-        
+
         val response = myRequest(requestTxt)
 
         return response.body<List<DivisionItem>>()
@@ -177,12 +186,12 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     suspend fun loadChassisNumber(sessionHandle: String,name:String):List<ChassisNumberItem>
     {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=loadChassisNumber" +
                 "&name=$name" +
                 "&sessionHandle=$sessionHandle"
-        
+
         val response = myRequest(requestTxt)
 
         return response.body<List<ChassisNumberItem>>()
@@ -190,7 +199,7 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     suspend fun LoadListEvents(sessionHandle: String,name:String):List<TireEvents>
     {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=LoadListEvents" +
                 "&name=$name" +
@@ -202,20 +211,20 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     }
     suspend fun getListTire(sessionHandle: String, serialNumber: String?, chassisNumber: String?):List<TireList> {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=getListTire" +
                 "&sessionHandle=$sessionHandle" +
                 "&serialNumber=$serialNumber" +
                 "&chassisNumber=$chassisNumber"
-        
+
         val response = myRequest(requestTxt)
         return response.body<List<TireList>>()
     }
 
     suspend fun getFullTire(sessionHandle: String,SN: String):TireList
     {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=getFullTire" +
                 "&sessionHandle=$sessionHandle" +
@@ -224,12 +233,12 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
         return response.body<TireList>()
     }
     suspend fun addTire(sessionHandle: String, serialNumber: String?):List<TireList> {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=addTire" +
                 "&sessionHandle=$sessionHandle" +
                 "&serialNumber=$serialNumber"
-        
+
 
         val response = myRequest(requestTxt)
 
@@ -237,29 +246,29 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
     }
 
     suspend fun getImageList(sessionHandle: String, serialNumber: String?):List<ImageList> {
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=getImageList" +
                 "&sessionHandle=$sessionHandle" +
                 "&serialNumber=$serialNumber"
-        
+
         val response = myRequest(requestTxt)
         return response.body<List<ImageList>>()
     }
 
     suspend fun updateTireItem (sessionHandle: String, SN:String, nameField: String, value:String){
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=updateTireItem" +
                 "&sessionHandle=$sessionHandle" +
                 "&SN=$SN" +
                 "&nameField=$nameField" +
                 "&value=$value"
-        
+
         val response = myRequest(requestTxt)
     }
     suspend fun addEventForTire(sessionHandle: String, SN:String,id:Int){
-        val requestTxt ="$urlRemoteServer?" +
+        val requestTxt =
                 "r0=SYS" +
                 "&r1=addEventForTire" +
                 "&sessionHandle=$sessionHandle" +
@@ -270,7 +279,7 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
 
     }
     suspend fun insertHeadPhoto (sessionHandle: String, SN:String,coordinatePhoto:String,id_image: String,id_tireEvents:Int):String{
-        val requestTxt =  "$urlRemoteServer?" +
+        val requestTxt =  
                 "r0=SYS" +
                 "&r1=insertHeadPhoto" +
                 "&sessionHandle=$sessionHandle" +
@@ -286,7 +295,7 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
     }
 
     suspend fun getHashImageFromServer(sessionHandle: String,id_image:String):String{
-        val requestTxt =  "$urlRemoteServer?" +
+        val requestTxt =  
                 "r0=SYS" +
                 "&r1=getHashImage" +
                 "&sessionHandle=$sessionHandle" +
@@ -299,7 +308,7 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
     }
 
     suspend fun messageLogToServer(sessionHandle: String,message:String):String{
-        val requestTxt =  "$urlRemoteServer?" +
+        val requestTxt =  
                 "r0=SYS" +
                 "&r1=messageLog" +
                 "&sessionHandle=$sessionHandle" +
@@ -310,34 +319,32 @@ class RemoteSource @Inject constructor(private val client: HttpClient) {
         return retdata
 
     }
-    suspend fun uploadPhoto(sessionHandle: String, id_image:String,imageBody:ByteArray):Boolean{
-        val res:Boolean = try {
-            val retData =  client.submitFormWithBinaryData(
-                url = urlRemoteServer,
-                formData = formData {
-                    append("r0",          "SYS")
-                    append("r1",          "uploadPhoto")
-                    append("sessionHandle",     sessionHandle)
-                    append("id_image",          id_image)
-                    append("image",             imageBody,
-                    )
-                }
-            )
-
-
-            if (retData.status.value == 200){
-                true
-            }else{
-                false
-            }
-
-        }catch (error: Exception){
-            false
-        }
-
-        return res
+    suspend fun insertFilesToUpload(sessionHandle:String,SN:String,fileName:String,coordinatePhoto:String,idTireEvents:Int):String{
+        val requestTxt =  
+                "r0=SYS" +
+                "&r1=insertFilesToUpload" +
+                "&sessionHandle=$sessionHandle" +
+                "&SN=$SN" +
+                "&fileName=$fileName" +
+                "&coordinatePhoto=$coordinatePhoto" +
+                "&idTireEvents=$idTireEvents"
+        val response = myRequest(requestTxt)
+        val retdata = response.body<String>()
+        return retdata //id_image
     }
 
+
+
+    suspend fun getFilesToUpload(sessionHandle:String,SN:String):List<ImageListLocal>{
+        val requestTxt =
+            "r0=SYS" +
+                    "&r1=getFilesToUpload" +
+                    "&sessionHandle=$sessionHandle" +
+                    "&SN=$SN"
+        val response = myRequest(requestTxt)
+        val retdata = response.body<List<ImageListLocal>>()
+        return retdata //id_image
+    }
 
 
 }

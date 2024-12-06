@@ -51,7 +51,7 @@ fun AuthContent(
         modifier = Modifier
             .fillMaxWidth()
             .height(480.dp)
-            .padding(start = 50.dp, top = 90.dp, end = 50.dp, bottom = 330.dp)
+            .padding(start = 50.dp, top = 90.dp, end = 50.dp, bottom = 280.dp)
             .shadow(
                 elevation = 4.dp,
             )
@@ -139,7 +139,7 @@ fun AuthContent(
                 auth(login.value, pass.value)
 
             }) {
-                Text("Вход", fontSize = 16.sp)
+                Text("Вход", fontSize = 18.sp)
             }
 
 

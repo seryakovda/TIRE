@@ -42,6 +42,8 @@ class AuthViewModel @Inject constructor(
 
 
     fun autorisation(login: String, pass: String){
+        val path = context.getFilesDir()
+        Log.i("MyMSG","autorisation " + path.toString())
         viewModelScope.launch(Dispatchers.IO) {
              repository.autorisation(login, pass)
              if(repository.getStatusAutorisation()) {
@@ -59,7 +61,7 @@ class AuthViewModel @Inject constructor(
     fun upload() {
 
         viewModelScope.launch(Dispatchers.IO) {
-            repository.uploadAllImageFromLocalTable()
+           // repository.uploadAllImageFromLocalTable()
         }
     }
 
