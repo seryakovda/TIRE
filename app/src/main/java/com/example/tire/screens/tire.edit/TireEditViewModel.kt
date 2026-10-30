@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
-import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -12,10 +11,10 @@ import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.tire.data.ImageList
 import com.example.tire.data.ImageListLocal
+import com.example.tire.data.RemoteSource
 import com.example.tire.data.Repository
 import com.example.tire.data.TireDataStore
 import com.example.tire.data.TireList
-import com.example.tire.di.ComposeFileProvider
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -29,20 +28,19 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import javax.inject.Inject
 
-
 @HiltViewModel
 class TireEditViewModel @Inject constructor(
     private var repository: Repository,
     private var tireDataStore: TireDataStore,
-    private var context:Context
-): ViewModel() {
-    private var fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
-    // globally declare LocationRequest
+    private var context: Context,
+    val remoteSource: RemoteSource
+) : ViewModel() {
+
+    private var fusedLocationClient: FusedLocationProviderClient =
+        LocationServices.getFusedLocationProviderClient(context)
+
     private lateinit var locationRequest: LocationRequest
-
-    // globally declare LocationCallback
     private lateinit var locationCallback: LocationCallback
-
 
     val tireEditData: MutableLiveData<TireList?> = MutableLiveData()
     val imageList: MutableLiveData<List<ImageList>> = MutableLiveData()
@@ -55,13 +53,17 @@ class TireEditViewModel @Inject constructor(
     init {
         getLocationUpdates()
         startLocationUpdates()
+
         viewModelScope.launch(Dispatchers.IO) {
             tireDataStore.getAccessToken.collect {
                 if (it != null) {
                     tireEditData.postValue(it)
+
                     launch {
                         imageList.postValue(repository.getImageList(it))
-                        imageListLocal.postValue(repository.getFilesToUpload(it.SN))
+                        imageListLocal.postValue(
+                            repository.getFilesToUpload(it.SN)
+                        )
                     }
                 }
             }
@@ -73,44 +75,46 @@ class TireEditViewModel @Inject constructor(
         fusedLocationClient.requestLocationUpdates(
             locationRequest,
             locationCallback,
-            null /* Looper */
+            null
         )
     }
+
     private fun stopLocationUpdates() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
+
     fun getLocationUpdates() {
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+        fusedLocationClient =
+            LocationServices.getFusedLocationProviderClient(context)
+
         locationRequest = LocationRequest()
         locationRequest.interval = 1000
         locationRequest.fastestInterval = 1000
-        locationRequest.smallestDisplacement = 1f // 170 m = 0.1 mile
+        locationRequest.smallestDisplacement = 1f
         locationRequest.priority =
-            LocationRequest.PRIORITY_HIGH_ACCURACY //set according to your app function
+            LocationRequest.PRIORITY_HIGH_ACCURACY
+
         locationCallback = object : LocationCallback() {
-            override  fun onLocationResult(locationResult: LocationResult) {
+            override fun onLocationResult(locationResult: LocationResult) {
                 locationResult ?: return
 
                 if (locationResult.locations.isNotEmpty()) {
-                    // get latest location
-                    val location =
-                        locationResult.lastLocation
+                    val location = locationResult.lastLocation
+
                     if (location != null) {
-                        val mLatitude:Double = location.latitude
-                        val mLongitude:Double = location.longitude
-                        coordinatePhoto.value = "[${mLatitude},${mLongitude}]"
+                        val mLatitude: Double = location.latitude
+                        val mLongitude: Double = location.longitude
+
+                        coordinatePhoto.value =
+                            "[$mLatitude,$mLongitude]"
                     }
-                    // use your location object
-                    // get latitude , longitude and other info from this
                 }
-
-
             }
         }
     }
 
-    fun getSessionHandle():String{
+    fun getSessionHandle(): String {
         return repository.getSessionHandle()
     }
 
@@ -118,6 +122,7 @@ class TireEditViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val v = tireDataStore.getAccessToken.asLiveData().value
             val vv = Json.encodeToString(v)
+
             imageList.postValue(repository.getImageList(v))
         }
     }
@@ -127,63 +132,77 @@ class TireEditViewModel @Inject constructor(
         super.onCleared()
     }
 
-
-    fun insertFilesToUpload(fileName:String,coordinatePhoto:String,idTireEvents:Int)
-    {
-        var id_image:String = ""
-
+    fun insertFilesToUpload(
+        fileName: String,
+        coordinatePhoto: String,
+        idTireEvents: Int
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.insertFilesToUpload(fileName,coordinatePhoto,idTireEvents) //сохраняет в локальном репозитории все данные для последующей загрузки на сервер
-            imageListLocal.postValue(
-                repository.getFilesToUpload(repository.getSN()) // обновляет данные с для отображения на странице с шиной
+            repository.insertFilesToUpload(
+                fileName,
+                coordinatePhoto,
+                idTireEvents
             )
-           // repository.uploadAllImageFromLocalTableByName(fileName,id_image)
 
-            //repository.uploadAllImageFromLocalTable()
+            imageListLocal.postValue(
+                repository.getFilesToUpload(repository.getSN())
+            )
         }
     }
 
-    fun insertFilesToUploadFromGallery(listUriFromGallery:List<Uri>?,idTireEvents:Int)
-    {
-        listUriFromGallery?.forEach{
+    fun insertFilesToUploadFromGallery(
+        listUriFromGallery: List<Uri>?,
+        idTireEvents: Int
+    ) {
+        listUriFromGallery?.forEach {
 
             val directory = File(context.cacheDir, "images")
             directory.mkdirs()
+
             val file = File.createTempFile(
                 "selected_image_",
                 ".jpg",
-                directory,
+                directory
             )
 
             val authority = context.packageName + ".FileProvider"
+
             val fp = FileProvider.getUriForFile(
                 context,
                 authority,
-                file,
+                file
             )
 
             val fileName = fp.toString()
-                //Log.i("MyMSG",fileName)
+
             val stream = context.contentResolver.openInputStream(it)
 
-            org.apache.commons.io.FileUtils.copyInputStreamToFile(stream,file)
-            insertFilesToUpload(fileName,"[]",idTireEvents)
+            org.apache.commons.io.FileUtils.copyInputStreamToFile(
+                stream,
+                file
+            )
+
+            insertFilesToUpload(
+                fileName,
+                "[]",
+                idTireEvents
+            )
         }
+
         addWorkToWorker()
     }
 
-    fun addWorkToWorker()
-    {
+    fun addWorkToWorker() {
         viewModelScope.launch(Dispatchers.IO) {
             repository.addWorkToWorker()
         }
     }
 
-    fun setIdImageForViewFullScreen(id_image:String){
-            repository.setIdImageForViewFullScreen(id_image)
+    fun setIdImageForViewFullScreen(id_image: String) {
+        repository.setIdImageForViewFullScreen(id_image)
     }
 
-    fun getIdImageForViewFullScreen(){
+    fun getIdImageForViewFullScreen() {
         repository.getIdImageForViewFullScreen()
     }
 }

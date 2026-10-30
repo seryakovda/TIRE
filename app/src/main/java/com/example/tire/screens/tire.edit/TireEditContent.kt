@@ -1,6 +1,5 @@
 package com.example.tire.screens.tire.edit
 
-
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -47,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,7 +57,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -75,9 +74,9 @@ import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
 import coil.request.ImageRequest
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.example.tire.ConstApp.urlRemoteServer
 import com.example.tire.Destination
 import com.example.tire.data.ImageListLocal
+import com.example.tire.data.RemoteSource
 import com.example.tire.data.TireList
 import com.example.tire.di.ComposeFileProvider
 import com.example.tire.ui.theme.TireTheme
@@ -89,30 +88,35 @@ import java.util.UUID
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TireEditContent(
-    tireEditData:  TireList?,
+    tireEditData: TireList?,
     navigateToSelect: NavHostController,
-    imageList:List<ImageList>?,
-    imageListLocal:List<ImageListLocal>?,
+    imageList: List<ImageList>?,
+    imageListLocal: List<ImageListLocal>?,
     sessionHandle: String,
-    context:Context,
-    imageUri: (uri:Uri) -> Unit = { },
-    hasImage: (uri:Boolean) -> Unit = { },
-    setIdImageForViewFullScreen: (String) -> Unit = { },
-    uriFormGallery: (List<Uri>) -> Unit = { },
-    hasIriFormGallery : (Boolean) -> Unit = { },
-    idTireEvents: (uri:Int) -> Unit = { }
-    ) {
+    context: Context,
+    remoteSource: RemoteSource,
+    imageUri: (uri: Uri) -> Unit = {},
+    hasImage: (uri: Boolean) -> Unit = {},
+    setIdImageForViewFullScreen: (String) -> Unit = {},
+    uriFormGallery: (List<Uri>) -> Unit = {},
+    hasIriFormGallery: (Boolean) -> Unit = {},
+    idTireEvents: (uri: Int) -> Unit = {}
+) {
 
-
-
-    Column{
+    Column {
         Row(
             modifier = Modifier
                 .padding(top = 3.dp, start = 3.dp, bottom = 3.dp, end = 3.dp)
         ) {
             Column {
                 tireEditData?.let {
-                    rowData("",                     tireEditData.SN,                R.drawable.img_search_sn, navigateToSelect,fontSize = 28)
+                    rowData(
+                        "",
+                        tireEditData.SN,
+                        R.drawable.img_search_sn,
+                        navigateToSelect,
+                        fontSize = 28
+                    )
                 }
             }
         }
@@ -124,35 +128,100 @@ fun TireEditContent(
                 flingBehavior = null,
                 reverseScrolling = false
             )
-        ){
+        ) {
             Column {
                 tireEditData?.let {
-                    rowData("Типоразмер: ",         tireEditData.standardSize,      R.drawable.img_edit, navigateToSelect,route = Destination.ScreenEditTireStandardSize.route ,        noEdit = true)
-                    rowData("Модель: ",             tireEditData.model,             R.drawable.img_edit, navigateToSelect,route = Destination.ScreenEditTireModel.route ,               noEdit = true)
-                    rowData("Брэнд: ",              tireEditData.brand,             R.drawable.img_edit, navigateToSelect,route = Destination.ScreenEditTireBrand.route,                noEdit = true)
-                    rowData("Номер шасси: ",        tireEditData.chassisNumber,     R.drawable.img_edit, navigateToSelect,route = Destination.ScreenEditTireChassisNumber.route ,       noEdit = true)
-                    rowData("Последняя дата - ",    tireEditData.lastEvent,         navigateToSelect = navigateToSelect,                                                                noEdit = true)
-                    rowData("Событие - ",           tireEditData.event,             navigateToSelect = navigateToSelect,                                                                noEdit = true)
-                    rowData("Причина - ",           tireEditData.reason,            navigateToSelect = navigateToSelect,                                                                noEdit = true)
-                    rowData("Статус - ",            tireEditData.status,            navigateToSelect = navigateToSelect,                                                                noEdit = true)
-                    rowData("позиция - ",           tireEditData.positionOnChassis, navigateToSelect = navigateToSelect,                                                                noEdit = true)
-                    rowData("Протектор - ",         tireEditData.heightTread,       navigateToSelect = navigateToSelect,                                                                noEdit = true)
-                    rowData("Пробег - ",            tireEditData.mileage,           navigateToSelect = navigateToSelect,                                                                noEdit = true)
+                    rowData(
+                        "Типоразмер: ",
+                        tireEditData.standardSize,
+                        R.drawable.img_edit,
+                        navigateToSelect,
+                        route = Destination.ScreenEditTireStandardSize.route,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Модель: ",
+                        tireEditData.model,
+                        R.drawable.img_edit,
+                        navigateToSelect,
+                        route = Destination.ScreenEditTireModel.route,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Брэнд: ",
+                        tireEditData.brand,
+                        R.drawable.img_edit,
+                        navigateToSelect,
+                        route = Destination.ScreenEditTireBrand.route,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Номер шасси: ",
+                        tireEditData.chassisNumber,
+                        R.drawable.img_edit,
+                        navigateToSelect,
+                        route = Destination.ScreenEditTireChassisNumber.route,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Последняя дата - ",
+                        tireEditData.lastEvent,
+                        navigateToSelect = navigateToSelect,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Событие - ",
+                        tireEditData.event,
+                        navigateToSelect = navigateToSelect,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Причина - ",
+                        tireEditData.reason,
+                        navigateToSelect = navigateToSelect,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Статус - ",
+                        tireEditData.status,
+                        navigateToSelect = navigateToSelect,
+                        noEdit = true
+                    )
+                    rowData(
+                        "позиция - ",
+                        tireEditData.positionOnChassis,
+                        navigateToSelect = navigateToSelect,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Протектор - ",
+                        tireEditData.heightTread,
+                        navigateToSelect = navigateToSelect,
+                        noEdit = true
+                    )
+                    rowData(
+                        "Пробег - ",
+                        tireEditData.mileage,
+                        navigateToSelect = navigateToSelect,
+                        noEdit = true
+                    )
                 }
             }
-            Row (
+
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
-            ){
+            ) {
                 Button(
                     onClick = {
-                        navigateToSelect.navigate(Destination.ScreenAddEvent.route)
+                        navigateToSelect.navigate(
+                            Destination.ScreenAddEvent.route
+                        )
                     },
-                    Modifier.width(220.dp),
-                    //shape = RectangleShape,
-                    //contentPadding = PaddingValues(0.dp),
+                    Modifier.width(220.dp)
                 ) {
-                    Text("Добавить событие (сход/фиксация)",
+                    Text(
+                        "Добавить событие (сход/фиксация)",
                         fontSize = 18.sp,
                         style = TextStyle(
                             lineHeightStyle = LineHeightStyle(
@@ -163,17 +232,18 @@ fun TireEditContent(
                     )
                 }
             }
-            tireEditData?.events?.let{
+
+            tireEditData?.events?.let {
                 it.forEach {
                     val id = it.id
 
-                    Row (modifier = Modifier
-                        .padding(1.dp)
-                        .background(
-                            color = Color(0xFFebf7ff),
-                            shape = RoundedCornerShape(2.dp)
-                        )
-
+                    Row(
+                        modifier = Modifier
+                            .padding(1.dp)
+                            .background(
+                                color = Color(0xFFebf7ff),
+                                shape = RoundedCornerShape(2.dp)
+                            )
                     ) {
                         Column {
                             Text(
@@ -184,40 +254,47 @@ fun TireEditContent(
                                     .padding(top = 4.dp, start = 15.dp)
                                     .fillMaxWidth()
                             )
-                            ButtonsImage(context,imageUri,hasImage,uriFormGallery,hasIriFormGallery,id,idTireEvents)
+
+                            ButtonsImage(
+                                context,
+                                imageUri,
+                                hasImage,
+                                uriFormGallery,
+                                hasIriFormGallery,
+                                id,
+                                idTireEvents
+                            )
                         }
                     }
 
-                    it.listPhoto?.let {
-                        printImages(imageListLocal,it,sessionHandle,setIdImageForViewFullScreen,navigateToSelect,id)
+                    it.listPhoto?.let { photos ->
+                        printImages(
+                            imageListLocal = imageListLocal,
+                            imageList = photos,
+                            sessionHandle = sessionHandle,
+                            remoteSource = remoteSource,
+                            setIdImageForViewFullScreen = setIdImageForViewFullScreen,
+                            navigateToSelect = navigateToSelect,
+                            id_event = id
+                        )
                     }
                 }
             }
-
         }
     }
-
 }
-
-
-
-
-
-
-
 
 
 @Composable
 fun ButtonsImage(
-    context:Context,
-    imageUri: (uri:Uri) -> Unit = { },
-    hasImage: (uri:Boolean) -> Unit = { },
-    uriFormGallery: (List<Uri>) -> Unit = { },
-    hasIriFormGallery : (Boolean) -> Unit = { },
-    id_event:Int,
-    idTireEvents: (uri:Int) -> Unit = { },
-)
-{
+    context: Context,
+    imageUri: (uri: Uri) -> Unit = {},
+    hasImage: (uri: Boolean) -> Unit = {},
+    uriFormGallery: (List<Uri>) -> Unit = {},
+    hasIriFormGallery: (Boolean) -> Unit = {},
+    id_event: Int,
+    idTireEvents: (uri: Int) -> Unit = {}
+) {
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
@@ -226,32 +303,27 @@ fun ButtonsImage(
         }
     )
 
-    //var selectImages by remember { mutableStateOf(listOf<Uri>()) }
     val galleryLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetMultipleContents(),
-            //contract = ActivityResultContracts.PickMultipleVisualMedia(),
             onResult = {
                 uriFormGallery(it)
                 idTireEvents(id_event)
-                if (it.isEmpty()){
+
+                if (it.isEmpty()) {
                     hasIriFormGallery(false)
-                }
-                else{
+                } else {
                     hasIriFormGallery(true)
                 }
             }
         )
 
-
-
-    Row (
+    Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly
-    ){
+    ) {
         Box(
-            modifier = Modifier
-                .size(100.dp)
+            modifier = Modifier.size(100.dp)
         ) {
             Image(
                 painter = rememberAsyncImagePainter(R.drawable.photoapparat),
@@ -265,12 +337,11 @@ fun ButtonsImage(
                         imageUri(uri)
                         cameraLauncher.launch(uri)
                     }
-
             )
         }
+
         Box(
-            modifier = Modifier
-                .size(100.dp)
+            modifier = Modifier.size(100.dp)
         ) {
             Image(
                 painter = rememberAsyncImagePainter(R.drawable.gallery),
@@ -285,45 +356,46 @@ fun ButtonsImage(
             )
         }
     }
-
 }
+
 
 @Composable
 fun printImages(
-    imageListLocal:List<ImageListLocal>?,
-    imageList:List<ImageList>?,
-    sessionHandle:String,
-    setIdImageForViewFullScreen: (String) -> Unit = { },
+    imageListLocal: List<ImageListLocal>?,
+    imageList: List<ImageList>?,
+    sessionHandle: String,
+    remoteSource: RemoteSource,
+    setIdImageForViewFullScreen: (String) -> Unit = {},
     navigateToSelect: NavHostController,
-    id_event:Int,
-    )
-{
+    id_event: Int
+) {
     val iL1 = imageListLocal
+
     Column {
-        if (iL1 != null) { // Если не Null
-            if (!iL1.isEmpty()) { // и не пустой то выводим перечисление
+        if (iL1 != null) {
+            if (iL1.isNotEmpty()) {
                 iL1.forEach {
-                    if (id_event == it.idTireEvents){
+                    if (id_event == it.idTireEvents) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
-                        ){
-                            Card (
+                        ) {
+                            Card(
                                 modifier = Modifier
                                     .padding(10.dp)
                                     .height(300.dp)
                                     .width(300.dp)
-                                    .clickable {
-                                    },
-                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                                shape = RectangleShape,
+                                    .clickable {},
+                                elevation = CardDefaults.cardElevation(
+                                    defaultElevation = 6.dp
+                                ),
+                                shape = RectangleShape
                             ) {
                                 Image(
                                     painter = rememberAsyncImagePainter(it.fileName),
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
+                                    modifier = Modifier.fillMaxSize()
                                 )
                             }
                         }
@@ -331,45 +403,38 @@ fun printImages(
                 }
             }
         }
-
     }
+
     val iL = imageList
 
-    Column{
-        if (iL != null) { // Если не Null
-            if (!iL.isEmpty()) { // и не пустой то выводим перечисление
-                iL.forEach {
-                    val requestTxt ="$urlRemoteServer?" +
-                            "r0=SYS" +
-                            "&r1=getImageSmall" +
-                            "&sessionHandle=$sessionHandle" +
-                            "&id_image=${it.id_image}"
+    Column {
+        if (iL != null) {
+            if (iL.isNotEmpty()) {
+                iL.forEach { image ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
-                    ){
-                        Card (
+                    ) {
+                        Card(
                             modifier = Modifier
                                 .padding(10.dp)
                                 .height(300.dp)
                                 .width(300.dp)
                                 .clickable {
-                                    setIdImageForViewFullScreen(it.id_image)
-                                    navigateToSelect.navigate(Destination.ScreenViewRemoteImage.route)
+                                    setIdImageForViewFullScreen(image.id_image)
+                                    navigateToSelect.navigate(
+                                        Destination.ScreenViewRemoteImage.route
+                                    )
                                 },
-                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                            shape = RectangleShape,
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = 6.dp
+                            ),
+                            shape = RectangleShape
                         ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    // картинка 1
-                                    .data(requestTxt)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
+                            RemoteImageThumbnail(
+                                sessionHandle = sessionHandle,
+                                idImage = image.id_image,
+                                remoteSource = remoteSource
                             )
                         }
                     }
@@ -379,29 +444,74 @@ fun printImages(
     }
 }
 
+
+@Composable
+fun RemoteImageThumbnail(
+    sessionHandle: String,
+    idImage: String,
+    remoteSource: RemoteSource
+) {
+    val context = LocalContext.current
+
+    val imageBytes = produceState<ByteArray?>(
+        initialValue = null,
+        sessionHandle,
+        idImage
+    ) {
+        value = try {
+            remoteSource.getImageSmall(
+                sessionHandle = sessionHandle,
+                idImage = idImage
+            )
+        } catch (e: Exception) {
+            Log.e(
+                "RemoteImageThumbnail",
+                "Ошибка загрузки изображения: $idImage",
+                e
+            )
+            null
+        }
+    }
+
+    imageBytes.value?.let { bytes ->
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(bytes)
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+
 @Composable
 fun rowData(
-    caption:String,
-    data:String,
-    resourceImage:Int = 0,
+    caption: String,
+    data: String,
+    resourceImage: Int = 0,
     navigateToSelect: NavHostController,
-    route:String? = null,
-    fontSize:Int = 20,
-    noEdit:Boolean = false
-){
-    Row (modifier = Modifier
-        .padding(1.dp)
-        .background(
-            color = Color(0xFFebf7ff),
-            shape = RoundedCornerShape(2.dp)
-        )
+    route: String? = null,
+    fontSize: Int = 20,
+    noEdit: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .padding(1.dp)
+            .background(
+                color = Color(0xFFebf7ff),
+                shape = RoundedCornerShape(2.dp)
+            )
+    ) {
+        var width: Float
 
-    ){
-        var width:Float
         if (noEdit)
             width = 1f
         else
             width = 0.85f
+
         Column {
             Text(
                 text = "$caption$data",
@@ -412,6 +522,7 @@ fun rowData(
                     .fillMaxWidth(width)
             )
         }
+
         if (!noEdit) {
             Box(
                 modifier = Modifier
@@ -422,7 +533,6 @@ fun rowData(
                         } else {
                             navigateToSelect.navigate(route)
                         }
-
                     }
             ) {
                 Image(
@@ -434,22 +544,25 @@ fun rowData(
     }
 }
 
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ImageItemPreview() {
     TireTheme {
-        Card (
+        Card(
             modifier = Modifier
                 .padding(10.dp)
                 .height(50.dp)
                 .width(100.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-            shape = RectangleShape,
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 6.dp
+            ),
+            shape = RectangleShape
         ) {
             Image(
                 painter = painterResource(id = R.drawable.img_edit),
                 contentDescription = "",
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Crop
             )
         }
     }

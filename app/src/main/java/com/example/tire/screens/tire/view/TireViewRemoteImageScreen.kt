@@ -9,11 +9,12 @@ fun TireViewRemoteImageScreen(
     navController: NavHostController,
     viewModel: TireViewViewModel = hiltViewModel()
 ) {
-    val sessionHandle = viewModel.getSessionHandle();
+    val sessionHandle = viewModel.getSessionHandle()
     val idImage = viewModel.getIdImage()
 
     TireViewContent(
         sessionHandle = sessionHandle,
-        id_image = idImage
+        id_image = idImage,
+        remoteSource = viewModel.remoteSource
     )
 }

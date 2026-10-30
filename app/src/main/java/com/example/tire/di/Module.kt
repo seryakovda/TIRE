@@ -16,7 +16,9 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import java.security.cert.X509Certificate
 import javax.inject.Singleton
+import javax.net.ssl.X509TrustManager
 
 
 @Module
@@ -37,7 +39,16 @@ object Module {
             }
             this.engine {
                 this.requestTimeout = 30000L
+                https {
+                    // TrustManager, который принимает все сертификаты
+                    trustManager = object : X509TrustManager {
+                        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+                        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+                        override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                    }
+                }
             }
+
         }
 
     @Singleton

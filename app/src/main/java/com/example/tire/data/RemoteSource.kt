@@ -1,4 +1,5 @@
 package com.example.tire.data
+
 import android.util.Log
 import com.example.tire.ConstApp.keyAPI
 import com.example.tire.ConstApp.urlRemoteServer
@@ -7,346 +8,410 @@ import com.example.tire.data.chassisNumber.ChassisNumberItem
 import com.example.tire.data.division.DivisionItem
 import com.example.tire.data.modelCar.ModelItem
 import com.example.tire.data.standard_size.StandardSizeItem
+
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.forms.submitFormWithBinaryData
-import io.ktor.client.request.request
+import io.ktor.client.request.forms.submitForm
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.request
-import io.ktor.http.Headers
-import io.ktor.http.HttpHeaders
-import io.ktor.http.date
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.Parameters
 import io.ktor.http.isSuccess
-import kotlinx.coroutines.runBlocking
+
 import kotlinx.serialization.Serializable
-import java.io.File
-import java.lang.Exception
-import java.math.BigInteger
-import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
-import java.util.UUID
 import javax.inject.Inject
+import io.ktor.client.request.forms.submitForm
 
 
 @Serializable
-data class SessionHandle (val state: String, val sessionHandle: String)
-
-@Serializable
-data class AutorisationResult(val state: String)
-
-@Serializable
-data class ImageList (
-    var id_image:String
+data class SessionHandle(
+    val state: String,
+    val sessionHandle: String
 )
+
 @Serializable
-data class TireEvents (
-    var id:Int,
-    var name:String
+data class AutorisationResult(
+    val state: String
 )
+
+@Serializable
+data class ImageList(
+    var id_image: String
+)
+
+@Serializable
+data class TireEvents(
+    var id: Int,
+    var name: String
+)
+
 data class ControlHttpResponse(
-    var error:Boolean,
-    var httpResponse:HttpResponse?
+    var error: Boolean,
+    var httpResponse: HttpResponse?
 )
-class RemoteSource @Inject constructor(private val client: HttpClient) {
 
-//    private suspend inline fun <reified T> obrabotka(requestTxt: String, default: T): T {
-//        val requestTxt1 = requestTxt.replace(" ","%20")
-//        return try {
-//            val response = client.request(requestTxt1)
-//            if (response.status.isSuccess()) response.body<T>() else default
-//        } catch (e: Exception) {
-//            default
-//        }
-//    }
+class RemoteSource @Inject constructor(
+    private val client: HttpClient
+) {
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-    suspend fun myRequest(requestTxt1:String):HttpResponse{
-        var requestTxt = requestTxt1.replace(" ","%20")
-            requestTxt = requestTxt.replace("/","%2F")
-            requestTxt = requestTxt.replace(":","%3A")
-            requestTxt = requestTxt.replace(".","%2E")
-            
-            requestTxt = "$urlRemoteServer?" + requestTxt
-    
-            //Log.i("MyMSG",requestTxt)
-        var retStatus = ControlHttpResponse(httpResponse = null, error = true)
-        while (retStatus.error) {
-            retStatus = statusRequest(requestTxt)
-        }
-        return retStatus.httpResponse!!
-    }
-
-    suspend fun statusRequest(requestTxt:String):ControlHttpResponse{
-        var retStatus = ControlHttpResponse(httpResponse = null, error = true)
-
-        retStatus.error = try {
-            retStatus.httpResponse = client.request(requestTxt)
-
-            //Log.i("MyMSG",retStatus.toString())
-            false
-        } catch (e: Exception) {
-            true
+    /**
+     * Общий метод запросов.
+     *
+     * Все параметры отправляются в теле POST-запроса,
+     * а не в URL.
+     *
+     * Значения автоматически кодируются как параметры формы.
+     */
+    private suspend fun myRequest(
+        vararg fields: Pair<String, String?>
+    ): HttpResponse {
+        val params = Parameters.build {
+            fields.forEach { (name, value) ->
+                append(name, value ?: "")
+            }
         }
 
-        return retStatus
+        return client.submitForm(
+            url = urlRemoteServer,
+            formParameters = params
+        )
     }
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
+
     suspend fun requestSession(): String {
-        val requestSessionUrl = 
-                "r0=SYS" +
-                "&r1=registrationKeyAPI" +
-                "&keyAPI=$keyAPI"
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "registrationKeyAPI",
+            "keyAPI" to keyAPI
+        )
 
-        val response = myRequest(requestSessionUrl)
-        var retValue = ""
-        if (response.status.isSuccess()) {
-            retValue = response.body<SessionHandle>().sessionHandle
+        return if (response.status.isSuccess()) {
+            response.body<SessionHandle>().sessionHandle
         } else {
-            retValue = ""
+            ""
         }
-        return retValue
     }
 
-    suspend fun autorisation(login: String, pass: String, sessionHandle: String): Boolean {
+    suspend fun autorisation(
+        login: String,
+        pass: String,
+        sessionHandle: String
+    ): Boolean {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "autorisation",
+            "login" to login,
+            "pass" to pass,
+            "sessionHandle" to sessionHandle
+        )
 
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=autorisation" +
-                "&login=$login" +
-                "&pass=$pass" +
-                "&sessionHandle=$sessionHandle"
-        //Log.v("MyMSG",requestTxt)
-        val response = myRequest(requestTxt)
-        if (response.status.isSuccess()) {
-            val state  = response.body<AutorisationResult>().state
-            if ( state == "false"){
-                return false
-            }else
-                return true
-        } else {
+        if (!response.status.isSuccess()) {
             return false
         }
 
+        return response.body<AutorisationResult>().state != "false"
     }
 
-    suspend fun loadBrand(sessionHandle: String,name:String): List<BrandItem>
-    {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=loadBrand" +
-                "&name=$name" +
-                "&sessionHandle=$sessionHandle"
-
-        val response = myRequest(requestTxt)
+    suspend fun loadBrand(
+        sessionHandle: String,
+        name: String
+    ): List<BrandItem> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "loadBrand",
+            "name" to name,
+            "sessionHandle" to sessionHandle
+        )
 
         return response.body<List<BrandItem>>()
     }
 
-    suspend fun loadStandardSize(sessionHandle: String,name:String): List<StandardSizeItem>
-    {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=loadStandardSize" +
-                "&name=$name" +
-                "&sessionHandle=$sessionHandle"
-
-        val response = myRequest(requestTxt)
+    suspend fun loadStandardSize(
+        sessionHandle: String,
+        name: String
+    ): List<StandardSizeItem> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "loadStandardSize",
+            "name" to name,
+            "sessionHandle" to sessionHandle
+        )
 
         return response.body<List<StandardSizeItem>>()
     }
 
-    suspend fun loadModel(sessionHandle: String,name:String): List<ModelItem>
-    {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=loadModel" +
-                "&name=$name" +
-                "&sessionHandle=$sessionHandle"
-
-        val response = myRequest(requestTxt)
+    suspend fun loadModel(
+        sessionHandle: String,
+        name: String
+    ): List<ModelItem> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "loadModel",
+            "name" to name,
+            "sessionHandle" to sessionHandle
+        )
 
         return response.body<List<ModelItem>>()
     }
 
-    suspend fun loadDivision(sessionHandle: String,name:String):List<DivisionItem>
-    {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=loadDivision" +
-                "&name=$name" +
-                "&sessionHandle=$sessionHandle"
-
-        val response = myRequest(requestTxt)
+    suspend fun loadDivision(
+        sessionHandle: String,
+        name: String
+    ): List<DivisionItem> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "loadDivision",
+            "name" to name,
+            "sessionHandle" to sessionHandle
+        )
 
         return response.body<List<DivisionItem>>()
     }
 
-    suspend fun loadChassisNumber(sessionHandle: String,name:String):List<ChassisNumberItem>
-    {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=loadChassisNumber" +
-                "&name=$name" +
-                "&sessionHandle=$sessionHandle"
-
-        val response = myRequest(requestTxt)
+    suspend fun loadChassisNumber(
+        sessionHandle: String,
+        name: String
+    ): List<ChassisNumberItem> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "loadChassisNumber",
+            "name" to name,
+            "sessionHandle" to sessionHandle
+        )
 
         return response.body<List<ChassisNumberItem>>()
     }
 
-    suspend fun LoadListEvents(sessionHandle: String,name:String):List<TireEvents>
-    {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=LoadListEvents" +
-                "&name=$name" +
-                "&sessionHandle=$sessionHandle"
-
-        val response = myRequest(requestTxt)
+    suspend fun LoadListEvents(
+        sessionHandle: String,
+        name: String
+    ): List<TireEvents> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "LoadListEvents",
+            "name" to name,
+            "sessionHandle" to sessionHandle
+        )
 
         return response.body<List<TireEvents>>()
-
     }
-    suspend fun getListTire(sessionHandle: String, serialNumber: String?, chassisNumber: String?):List<TireList> {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=getListTire" +
-                "&sessionHandle=$sessionHandle" +
-                "&serialNumber=$serialNumber" +
-                "&chassisNumber=$chassisNumber"
 
-        val response = myRequest(requestTxt)
+    suspend fun getListTire(
+        sessionHandle: String,
+        serialNumber: String?,
+        chassisNumber: String?
+    ): List<TireList> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "getListTire",
+            "sessionHandle" to sessionHandle,
+            "serialNumber" to serialNumber,
+            "chassisNumber" to chassisNumber
+        )
+
+        val responseText = response.bodyAsText()
+
         return response.body<List<TireList>>()
     }
 
-    suspend fun getFullTire(sessionHandle: String,SN: String):TireList
-    {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=getFullTire" +
-                "&sessionHandle=$sessionHandle" +
-                "&serialNumber=$SN"
-        val response = myRequest(requestTxt)
+    suspend fun getFullTire(
+        sessionHandle: String,
+        SN: String
+    ): TireList {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "getFullTire",
+            "sessionHandle" to sessionHandle,
+            "serialNumber" to SN
+        )
+
         return response.body<TireList>()
     }
-    suspend fun addTire(sessionHandle: String, serialNumber: String?):List<TireList> {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=addTire" +
-                "&sessionHandle=$sessionHandle" +
-                "&serialNumber=$serialNumber"
 
-
-        val response = myRequest(requestTxt)
+    suspend fun addTire(
+        sessionHandle: String,
+        serialNumber: String?
+    ): List<TireList> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "addTire",
+            "sessionHandle" to sessionHandle,
+            "serialNumber" to serialNumber
+        )
 
         return response.body<List<TireList>>()
     }
 
-    suspend fun getImageList(sessionHandle: String, serialNumber: String?):List<ImageList> {
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=getImageList" +
-                "&sessionHandle=$sessionHandle" +
-                "&serialNumber=$serialNumber"
+    suspend fun getImageList(
+        sessionHandle: String,
+        serialNumber: String?
+    ): List<ImageList> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "getImageList",
+            "sessionHandle" to sessionHandle,
+            "serialNumber" to serialNumber
+        )
 
-        val response = myRequest(requestTxt)
         return response.body<List<ImageList>>()
     }
 
-    suspend fun updateTireItem (sessionHandle: String, SN:String, nameField: String, value:String){
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=updateTireItem" +
-                "&sessionHandle=$sessionHandle" +
-                "&SN=$SN" +
-                "&nameField=$nameField" +
-                "&value=$value"
-
-        val response = myRequest(requestTxt)
-    }
-    suspend fun addEventForTire(sessionHandle: String, SN:String,id:Int){
-        val requestTxt =
-                "r0=SYS" +
-                "&r1=addEventForTire" +
-                "&sessionHandle=$sessionHandle" +
-                "&SN=$SN" +
-                "&id=$id"
-
-        val response = myRequest(requestTxt)
-
-    }
-    suspend fun insertHeadPhoto (sessionHandle: String, SN:String,coordinatePhoto:String,id_image: String,id_tireEvents:Int):String{
-        val requestTxt =  
-                "r0=SYS" +
-                "&r1=insertHeadPhoto" +
-                "&sessionHandle=$sessionHandle" +
-                "&coordinatePhoto=$coordinatePhoto" +
-                "&id_image=$id_image" +
-                "&id_tireEvents=$id_tireEvents" +
-
-                "&SN=$SN"
-
-        val response = myRequest(requestTxt)
-        val retdata = response.body<String>()
-        return retdata
+    suspend fun updateTireItem(
+        sessionHandle: String,
+        SN: String,
+        nameField: String,
+        value: String
+    ) {
+        myRequest(
+            "r0" to "SYS",
+            "r1" to "updateTireItem",
+            "sessionHandle" to sessionHandle,
+            "SN" to SN,
+            "nameField" to nameField,
+            "value" to value
+        )
     }
 
-    suspend fun getHashImageFromServer(sessionHandle: String,id_image:String):String{
-        val requestTxt =  
-                "r0=SYS" +
-                "&r1=getHashImage" +
-                "&sessionHandle=$sessionHandle" +
-                "&id_image=$id_image"
-
-        val response = myRequest(requestTxt)
-        val retdata = response.body<String>()
-        return retdata
-
+    suspend fun addEventForTire(
+        sessionHandle: String,
+        SN: String,
+        id: Int
+    ) {
+        myRequest(
+            "r0" to "SYS",
+            "r1" to "addEventForTire",
+            "sessionHandle" to sessionHandle,
+            "SN" to SN,
+            "id" to id.toString()
+        )
     }
 
-    suspend fun messageLogToServer(sessionHandle: String,message:String):String{
-        val requestTxt =  
-                "r0=SYS" +
-                "&r1=messageLog" +
-                "&sessionHandle=$sessionHandle" +
-                "&message=$message"
+    suspend fun insertHeadPhoto(
+        sessionHandle: String,
+        SN: String,
+        coordinatePhoto: String,
+        id_image: String,
+        id_tireEvents: Int
+    ): String {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "insertHeadPhoto",
+            "sessionHandle" to sessionHandle,
+            "coordinatePhoto" to coordinatePhoto,
+            "id_image" to id_image,
+            "id_tireEvents" to id_tireEvents.toString(),
+            "SN" to SN
+        )
 
-        val response = myRequest(requestTxt)
-        val retdata = response.body<String>()
-        return retdata
-
-    }
-    suspend fun insertFilesToUpload(sessionHandle:String,SN:String,fileName:String,coordinatePhoto:String,idTireEvents:Int):String{
-        val requestTxt =  
-                "r0=SYS" +
-                "&r1=insertFilesToUpload" +
-                "&sessionHandle=$sessionHandle" +
-                "&SN=$SN" +
-                "&fileName=$fileName" +
-                "&coordinatePhoto=$coordinatePhoto" +
-                "&idTireEvents=$idTireEvents"
-        val response = myRequest(requestTxt)
-        val retdata = response.body<String>()
-        return retdata //id_image
+        return response.body<String>()
     }
 
+    suspend fun getHashImageFromServer(
+        sessionHandle: String,
+        id_image: String
+    ): String {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "getHashImage",
+            "sessionHandle" to sessionHandle,
+            "id_image" to id_image
+        )
 
-
-    suspend fun getFilesToUpload(sessionHandle:String,SN:String):List<ImageListLocal>{
-        val requestTxt =
-            "r0=SYS" +
-                    "&r1=getFilesToUpload" +
-                    "&sessionHandle=$sessionHandle" +
-                    "&SN=$SN"
-        val response = myRequest(requestTxt)
-        val retdata = response.body<List<ImageListLocal>>()
-        return retdata //id_image
+        return response.body<String>()
     }
 
+    suspend fun messageLogToServer(
+        sessionHandle: String,
+        message: String
+    ): String {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "messageLog",
+            "sessionHandle" to sessionHandle,
+            "message" to message
+        )
 
+        return response.body<String>()
+    }
+
+    suspend fun insertFilesToUpload(
+        sessionHandle: String,
+        SN: String,
+        fileName: String,
+        coordinatePhoto: String,
+        idTireEvents: Int
+    ): String {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "insertFilesToUpload",
+            "sessionHandle" to sessionHandle,
+            "SN" to SN,
+            "fileName" to fileName,
+            "coordinatePhoto" to coordinatePhoto,
+            "idTireEvents" to idTireEvents.toString()
+        )
+
+        return response.body<String>()
+    }
+
+    suspend fun getFilesToUpload(
+        sessionHandle: String,
+        SN: String
+    ): List<ImageListLocal> {
+        val response = myRequest(
+            "r0" to "SYS",
+            "r1" to "getFilesToUpload",
+            "sessionHandle" to sessionHandle,
+            "SN" to SN
+        )
+
+        return response.body<List<ImageListLocal>>()
+    }
+
+    suspend fun getImageSmall(
+        sessionHandle: String,
+        idImage: String
+    ): ByteArray {
+
+        val response = client.submitForm(
+            url = urlRemoteServer,
+            formParameters = Parameters.build {
+                append("r0", "SYS")
+                append("r1", "getImageSmall")
+                append("sessionHandle", sessionHandle)
+                append("id_image", idImage)
+            }
+        )
+        if (!response.status.isSuccess()) {
+            val errorBody = response.body<String>()
+
+            throw IllegalStateException(
+                "getImageSmall failed: HTTP ${response.status}"
+            )
+        }
+
+        val bytes = response.body<ByteArray>()
+        return bytes
+    }
+
+    suspend fun getImageBig(
+        sessionHandle: String,
+        idImage: String
+    ): ByteArray {
+        val response = client.submitForm(
+            url = urlRemoteServer,
+            formParameters = Parameters.build {
+                append("r0", "SYS")
+                append("r1", "getImageBig")
+                append("sessionHandle", sessionHandle)
+                append("id_image", idImage)
+            }
+        )
+
+        if (!response.status.isSuccess()) {
+            throw IllegalStateException(
+                "getImageBig failed: HTTP ${response.status}"
+            )
+        }
+
+        return response.body<ByteArray>()
+    }
 }
-
-
