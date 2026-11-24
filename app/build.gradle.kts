@@ -13,14 +13,14 @@ plugins {
 
 android {
     namespace = "com.example.tire"
-    compileSdk = 34
+    compileSdk = 36
 
     useLibrary ("org.apache.http.legacy")
 
     defaultConfig {
-        applicationId = "com.example.tire"
+        applicationId = "com.seryakovda.tire"
         minSdk = 29
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
